@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Build a sysbench RPM.  The rpmdevtools package is required.
+
+# The distro we are building for.  Common usage in the Red Hat world is elN for
+# Enterprise Linux, where N is 5, 6, or 7.  Change this if building for others. 
+DIST=el5
+
+# The "local" version number for tracking minor updates that will not or should
+# not go upstream.  Like DIST, this has to be changed manually.
+UPDATE=2
+
+# Source info
+VERSION=0.5
+REVISION=$(cat rpm/REVISION) || {
+    echo "change to top-level directory and try again"
+    exit 1
+}
+SOURCE=sysbench-$VERSION
+SOURCE_TAR=$SOURCE.tar.gz
+
+# Package info
+# Default location of RPM build directory when using rpmdev-setuptree
+RPMBUILD=~/rpmbuild
+# Base name for all RPM package files
+PKG=$SOURCE-$REVISION.$UPDATE.$DIST
+
+function cleanup {
+    rm -f $SOURCE_TAR
+    rm -rf /tmp/$SOURCE
+}
+
+# Create ~/rpmbuild tree.  If it's there already, nothing to do.  Don't wipe it.
+rpmdev-setuptree || {
+    echo "Error setting up RPM build tree. Is the rpmdevtools package installed?"
+    exit 1
+}
+
+# install required build packages
+sudo yum install -y epel-release rpmdevtools automake libtool
+
+# Create a tar file containing the source. It needs to have the version in the name. 
+cleanup 
+mkdir /tmp/$SOURCE
+cp -r * /tmp/$SOURCE
+tar -C /tmp -c -z -f $SOURCE_TAR $SOURCE
+
+# Copy source blob and spec file to RPM build directory
+#cp rpm/sysbench.spec $RPMBUILD/SPEC
+cp $SOURCE_TAR $RPMBUILD/SOURCES
+
+# Build
+rpmbuild -ba \
+    --define "dist $DIST" \
+    --define "revision $REVISION" \
+    --define "update $UPDATE" \
+    rpm/sysbench.spec > build.log 2>&1
+
+if [ $? -ne 0 ]; then
+    echo "Build failed.  See build.log for details."
+else
+    rm -rf dist && mkdir -p dist
+    cp -r $RPMBUILD/RPMS/$(uname -m)/$PKG.* dist
+    cp $RPMBUILD/SRPMS/$PKG.* dist
+    echo "RPMs copied to ./dist"
+    cleanup
+fi
+
+# Done
+echo "Complete."
+
