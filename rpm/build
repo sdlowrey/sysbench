@@ -6,16 +6,9 @@
 # Enterprise Linux, where N is 5, 6, or 7.  Change this if building for others. 
 DIST=el5
 
-# The "local" version number for tracking minor updates that will not or should
-# not go upstream.  Like DIST, this has to be changed manually.
-UPDATE=2
-
 # Source info
 VERSION=0.5
-REVISION=$(cat rpm/REVISION) || {
-    echo "change to top-level directory and try again"
-    exit 1
-}
+REVISION=1
 SOURCE=sysbench-$VERSION
 SOURCE_TAR=$SOURCE.tar.gz
 
@@ -23,7 +16,7 @@ SOURCE_TAR=$SOURCE.tar.gz
 # Default location of RPM build directory when using rpmdev-setuptree
 RPMBUILD=~/rpmbuild
 # Base name for all RPM package files
-PKG=$SOURCE-$REVISION.$UPDATE.$DIST
+PKG=$SOURCE-$REVISION.$DIST
 
 function cleanup {
     rm -f $SOURCE_TAR
@@ -36,33 +29,34 @@ rpmdev-setuptree || {
     exit 1
 }
 
-# install required build packages
-sudo yum install -y epel-release rpmdevtools automake libtool
+echo "check/install required build packages..."
+PACKAGES="epel-release rpmdevtools automake libtool"
+pkglist=""
+for p in $PACKAGES; do
+    rpm -q --quiet $p || pkglist="$pkglist $p"
+done
+[ -n "$pkglist" ] && sudo yum install -y $pkglist
 
-# Create a tar file containing the source. It needs to have the version in the name. 
+echo "create source tar file..." 
 cleanup 
 mkdir /tmp/$SOURCE
 cp -r * /tmp/$SOURCE
 tar -C /tmp -c -z -f $SOURCE_TAR $SOURCE
-
-# Copy source blob and spec file to RPM build directory
-#cp rpm/sysbench.spec $RPMBUILD/SPEC
 cp $SOURCE_TAR $RPMBUILD/SOURCES
 
-# Build
+echo "build RPMs..."
 rpmbuild -ba \
     --define "dist $DIST" \
     --define "revision $REVISION" \
-    --define "update $UPDATE" \
     rpm/sysbench.spec > build.log 2>&1
 
 if [ $? -ne 0 ]; then
     echo "Build failed.  See build.log for details."
 else
+    echo "cleaning up and copying RPMs to dist..."
     rm -rf dist && mkdir -p dist
     cp -r $RPMBUILD/RPMS/$(uname -m)/$PKG.* dist
     cp $RPMBUILD/SRPMS/$PKG.* dist
-    echo "RPMs copied to ./dist"
     cleanup
 fi
 

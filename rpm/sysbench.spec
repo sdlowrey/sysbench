@@ -1,7 +1,7 @@
 Summary:       System performance benchmark
 Name:          sysbench
 Version:       0.5
-Release:       %{?revision}.%{update}.%{?dist}
+Release:       %{?revision}.%{?dist}
 License:       GPLv2+
 Group:         Applications/System
 Source0:       %{name}-%{version}.tar.gz
