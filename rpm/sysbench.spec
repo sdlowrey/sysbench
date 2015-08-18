@@ -8,14 +8,11 @@ Source0:       %{name}-%{version}.tar.gz
 URL:           http://sysbench.sourceforge.net/
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
+BuildRequires: gcc
 BuildRequires: libaio-devel
 BuildRequires: automake
 BuildRequires: libtool
-
-# set mysql aside for now
-#BuildRequires: mysql-community-devel
-#BuildRequires: lua
-#Requires: lua
+BuildRequires: mysql-devel
 
 %description
 SysBench is a modular, cross-platform and multi-threaded benchmark
@@ -44,13 +41,15 @@ benchmarks and third-party plug-in modules.
 %build
 touch NEWS AUTHORS
 autoreconf -vif
-%configure --without-mysql
+%configure
 make
 
 
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
+install -d $RPM_BUILD_ROOT%{_datadir}/sysbench
+cp sysbench/tests/db/*.lua $RPM_BUILD_ROOT%{_datadir}/sysbench
 rm -f $RPM_BUILD_ROOT%{_docdir}/sysbench/manual.html
 
 
@@ -62,7 +61,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %doc ChangeLog COPYING README.md
 %{_bindir}/*
-
+%{_datadir}/sysbench
 
 %changelog
 * Tue Sep 06 2011 Xavier Bachelot <xavier@bachelot.org> 0.4.12-5
